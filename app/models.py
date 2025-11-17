@@ -6,7 +6,7 @@ from app.database import Base
 
 
 # ==========================
-# 🗄️ MODELOS ORM (para o Oracle)
+# 🗄️ MODELOS ORM (Oracle)
 # ==========================
 
 class Question(Base):
@@ -42,6 +42,17 @@ class CareerProfileORM(Base):
 # 💡 MODELOS Pydantic
 # ==========================
 
+class OptionSchema(BaseModel):
+    text: str
+    weights: Dict[str, int]
+
+
+class QuestionSchema(BaseModel):
+    id: int
+    question: str
+    options: List[OptionSchema]
+
+
 class AnswerRequest(BaseModel):
     session_id: str
     question_id: int
@@ -56,14 +67,11 @@ class CareerProfile(BaseModel):
 
 class ChatState(BaseModel):
     session_id: str
-    current_question_id: Optional[int] = 1
+    current_question: Optional[QuestionSchema] = None
     scores: Dict[str, int] = Field(default_factory=lambda: {
-        "realistic": 0,
-        "investigative": 0,
-        "artistic": 0,
-        "social": 0,
-        "enterprising": 0,
-        "conventional": 0
+        "artes": 0,
+        "humanas": 0,
+        "tecnologia": 0
     })
     finished: bool = False
-    suggested_profile: Optional[CareerProfile] = None
+    suggested_career: Optional[str] = None
