@@ -2,7 +2,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
 # Ajuste seu usuário e senha aqui 👇
-DATABASE_URL = "oracle+oracledb://rm562085:140207@oracle.fiap.com.br:1521/ORCL"
+DATABASE_URL = "oracle+oracledb://rm563197:180407@oracle.fiap.com.br:1521/ORCL"
 
 print("🔄 Inicializando conexão com o banco Oracle...")
 
