@@ -4,34 +4,38 @@ from dotenv import load_dotenv
 import os
 import sys
 
+# Carrega variáveis do .env
 load_dotenv()
 
-# Carrega variáveis de ambiente
+# Variáveis obrigatórias
 ORACLE_USER = os.getenv("ORACLE_USER")
 ORACLE_PASSWORD = os.getenv("ORACLE_PASSWORD")
-ORACLE_DSN = os.getenv("ORACLE_DSN")
+ORACLE_DSN = os.getenv("ORACLE_DSN")  # Ex: oracle.fiap.com.br:1521/ORCL
 
-# Verifica se as variáveis existem
-missing = [k for k, v in {
-    "ORACLE_USER": ORACLE_USER,
-    "ORACLE_PASSWORD": ORACLE_PASSWORD,
-    "ORACLE_DSN": ORACLE_DSN,
-}.items() if not v]
+# Verifica variáveis faltando
+missing = [
+    k for k, v in {
+        "ORACLE_USER": ORACLE_USER,
+        "ORACLE_PASSWORD": ORACLE_PASSWORD,
+        "ORACLE_DSN": ORACLE_DSN,
+    }.items() if not v
+]
 
 if missing:
     print(f"❌ ERRO: Variáveis de ambiente faltando: {', '.join(missing)}")
     sys.exit(1)
 
-# Oracle DSN recomendado: "host:port/servicename"
-DATABASE_URL = f"oracle+cx_oracle://{ORACLE_USER}:{ORACLE_PASSWORD}@{ORACLE_DSN}"
+# DSN usando driver oracledb (modo THIN)
+DATABASE_URL = (
+    f"oracle+oracledb://{ORACLE_USER}:{ORACLE_PASSWORD}@{ORACLE_DSN}?mode=thin"
+)
 
 # Cria engine
 engine = create_engine(
     DATABASE_URL,
-    encoding="utf-8",
-    echo=False,     # coloque True para debug SQL
-    pool_pre_ping=True,  # evita conexões quebradas
-    pool_recycle=1800    # evita timeout no Oracle
+    echo=False,
+    pool_pre_ping=True,
+    pool_recycle=1800
 )
 
 # Session maker
@@ -41,5 +45,5 @@ SessionLocal = sessionmaker(
     bind=engine,
 )
 
-# Base declarativa para models
+# Base de modelos
 Base = declarative_base()
