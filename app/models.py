@@ -32,7 +32,6 @@ class Session(Base):
     user = relationship("User", back_populates="sessions")
     answers = relationship("Answer", back_populates="session")
 
-
 class Answer(Base):
     __tablename__ = "answers"
 
