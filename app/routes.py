@@ -1,103 +1,50 @@
-# routes.py
-from fastapi import APIRouter, HTTPException, Query
-from typing import Dict, Optional
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from .database import SessionLocal
+from . import crud, schemas, models
 
-from app.models import AnswerRequest, ChatState  # Pydantic models
-from app.data import questions, careers
+router = APIRouter(prefix="/vocational", tags=["Vocational Test"])
 
-router = APIRouter()
-
-# armazenamento em memória para sessões (substitua por DB em produção)
-sessions: Dict[str, ChatState] = {}
-
-
-def _make_initial_scores() -> Dict[str, int]:
-    # garante as mesmas chaves usadas nas weights do data.py
-    return {"humanas": 0, "tecnologia": 0, "artes": 0}
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 
-@router.get("/start-chat", response_model=ChatState)
-def start_chat(session_id: str = Query(..., description="Session id gerada pelo frontend")):
-    """
-    Inicia uma sessão e retorna o ChatState com a primeira pergunta em current_question.
-    Obs: o router provavelmente é incluído com prefix="/api" no main.py, então a rota final será /api/start-chat
-    """
-    # se já existe sessão, retorna
-    if session_id in sessions:
-        return sessions[session_id]
-
-    # pega a primeira pergunta (ou None)
-    first_q = questions[0] if questions else None
-
-    # cria ChatState inicial (Pydantic vai validar/parsear current_question)
-    state = ChatState(
-        session_id=session_id,
-        current_question=first_q,
-        scores=_make_initial_scores(),
-        finished=False,
-        suggested_career=None
-    )
-
-    sessions[session_id] = state
-    return state
+@router.post("/start", response_model=schemas.StartSessionResponse)
+def start_test(request: schemas.StartSessionRequest, db: Session = Depends(get_db)):
+    user = crud.get_or_create_user(db, request.external_user_id)
+    session = crud.create_session(db, user.id)
+    return schemas.StartSessionResponse(session_id=session.id)
 
 
-@router.post("/submit-answer", response_model=ChatState)
-def submit_answer(request: AnswerRequest):
-    """
-    Recebe { session_id, question_id, option_index }, atualiza scores e retorna o novo ChatState
-    """
-    # valida sessão
-    if request.session_id not in sessions:
-        raise HTTPException(status_code=404, detail="Sessão não encontrada")
-
-    state = sessions[request.session_id]
-
-    if state.finished:
-        raise HTTPException(status_code=400, detail="Chat já finalizado")
-
-    # encontra a pergunta atual pelo id
-    question = next((q for q in questions if q["id"] == request.question_id), None)
+@router.post("/answer")
+def answer_question(request: schemas.AnswerRequest, db: Session = Depends(get_db)):
+    question = crud.get_question_by_code(db, request.question_code)
     if not question:
-        raise HTTPException(status_code=400, detail="Pergunta inválida")
+        raise HTTPException(404, "Question not found")
 
-    # valida opção
-    if request.option_index < 0 or request.option_index >= len(question["options"]):
-        raise HTTPException(status_code=400, detail="Opção inválida")
+    crud.save_answer(db, request.session_id, question, request.score)
+    return {"status": "ok"}
 
-    # pega os weights da opção escolhida
-    weights = question["options"][request.option_index].get("weights", {})
 
-    # garante chaves em scores
-    for k in weights.keys():
-        if k not in state.scores:
-            state.scores[k] = 0
+@router.get("/result/{session_id}", response_model=schemas.ResultResponse)
+def get_result(session_id: int, db: Session = Depends(get_db)):
+    answers = crud.get_answers_by_session(db, session_id)
 
-    # atualiza pontuações
-    for category, weight in weights.items():
-        state.scores[category] = state.scores.get(category, 0) + int(weight)
+    if not answers:
+        raise HTTPException(404, "No answers found for this session")
 
-    # calcula próxima pergunta
-    current_index = next((i for i, q in enumerate(questions) if q["id"] == request.question_id), -1)
-    if current_index == -1:
-        # não deveria acontecer porque já validamos, mas é seguro checar
-        raise HTTPException(status_code=400, detail="Pergunta não encontrada na lista")
+    scores = {}
+    for answer in answers:
+        scores[answer.question.code] = scores.get(answer.question.code, 0) + answer.score
 
-    if current_index + 1 < len(questions):
-        # existe próxima pergunta -> atualiza current_question
-        state.current_question = questions[current_index + 1]
-    else:
-        # não tem próxima -> finaliza e sugere carreira
-        state.finished = True
-        state.current_question = None
-
-        # escolhe categoria com maior pontuação
-        if state.scores:
-            max_category = max(state.scores, key=lambda c: state.scores.get(c, 0))
-            state.suggested_career = careers.get(max_category, "Carreira indefinida")
-        else:
-            state.suggested_career = "Carreira indefinida"
-
-    # salva (está em memória)
-    sessions[request.session_id] = state
-    return state
+    top = sorted(scores.items(), key=lambda x: x[1], reverse=True)[:3]
+    
+    return schemas.ResultResponse(
+        session_id=session_id,
+        scores=scores,
+        top_categories=[t[0] for t in top]
+    )

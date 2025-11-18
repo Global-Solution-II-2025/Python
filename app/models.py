@@ -1,77 +1,45 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Text
+from sqlalchemy import Column, Integer, String, ForeignKey, TIMESTAMP
 from sqlalchemy.orm import relationship
-from pydantic import BaseModel, Field
-from typing import Dict, Optional, List
-from app.database import Base
+from .database import Base
 
+class User(Base):
+    __tablename__ = "users"
 
-# ==========================
-# 🗄️ MODELOS ORM (Oracle)
-# ==========================
+    id = Column(Integer, primary_key=True, index=True)
+    external_user_id = Column(String, unique=True, index=True)
+    created_at = Column(TIMESTAMP)
+
+    sessions = relationship("Session", back_populates="user")
+
 
 class Question(Base):
     __tablename__ = "questions"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    text = Column(String(255), nullable=False)
+    id = Column(Integer, primary_key=True)
+    code = Column(String, unique=True)
+    text = Column(String)
 
-    options = relationship("Option", back_populates="question", cascade="all, delete-orphan")
-
-
-class Option(Base):
-    __tablename__ = "options"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    text = Column(String(255), nullable=False)
-    category = Column(String(50), nullable=False)  # RIASEC category
-    question_id = Column(Integer, ForeignKey("questions.id"), nullable=False)
-
-    question = relationship("Question", back_populates="options")
+    answers = relationship("Answer", back_populates="question")
 
 
-class CareerProfileORM(Base):
-    __tablename__ = "career_profiles"
+class Session(Base):
+    __tablename__ = "sessions"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    riasec_code = Column(String(3), nullable=False)
-    career_name = Column(String(100), nullable=False)
-    description = Column(Text, nullable=False)
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    created_at = Column(TIMESTAMP)
 
-
-# ==========================
-# 💡 MODELOS Pydantic
-# ==========================
-
-class OptionSchema(BaseModel):
-    text: str
-    weights: Dict[str, int]
+    user = relationship("User", back_populates="sessions")
+    answers = relationship("Answer", back_populates="session")
 
 
-class QuestionSchema(BaseModel):
-    id: int
-    question: str
-    options: List[OptionSchema]
+class Answer(Base):
+    __tablename__ = "answers"
 
+    id = Column(Integer, primary_key=True)
+    session_id = Column(Integer, ForeignKey("sessions.id"))
+    question_id = Column(Integer, ForeignKey("questions.id"))
+    score = Column(Integer)
 
-class AnswerRequest(BaseModel):
-    session_id: str
-    question_id: int
-    option_index: int
-
-
-class CareerProfile(BaseModel):
-    riasec_code: str
-    career_name: str
-    description: str
-
-
-class ChatState(BaseModel):
-    session_id: str
-    current_question: Optional[QuestionSchema] = None
-    scores: Dict[str, int] = Field(default_factory=lambda: {
-        "artes": 0,
-        "humanas": 0,
-        "tecnologia": 0
-    })
-    finished: bool = False
-    suggested_career: Optional[str] = None
+    session = relationship("Session", back_populates="answers")
+    question = relationship("Question", back_populates="answers")

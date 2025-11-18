@@ -1,31 +1,21 @@
-# app/schemas.py
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, Dict
+
+class StartSessionRequest(BaseModel):
+    external_user_id: str
 
 
-class OptionSchema(BaseModel):
-    id: int
-    text: str
-    category: str
-
-    class Config:
-        orm_mode = True
+class StartSessionResponse(BaseModel):
+    session_id: int
 
 
-class QuestionSchema(BaseModel):
-    id: int
-    text: str
-    options: List[OptionSchema]
-
-    class Config:
-        orm_mode = True
+class AnswerRequest(BaseModel):
+    session_id: int
+    question_code: str
+    score: int
 
 
-class CareerSchema(BaseModel):
-    id: int
-    riasec_code: str
-    career_name: str
-    description: str
-
-    class Config:
-        orm_mode = True
+class ResultResponse(BaseModel):
+    session_id: int
+    scores: Dict[str, int]
+    top_categories: list
