@@ -1,5 +1,5 @@
-fastapi
-uvicorn[standard]
-SQLAlchemy
-oracledb
-python-dotenv
+fastapi>=0.110
+uvicorn[standard]>=0.29
+SQLAlchemy>=2.0
+oracledb>=2.1
+python-dotenv>=1.0

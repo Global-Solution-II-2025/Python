@@ -5,7 +5,6 @@ import oracledb
 import os
 import sys
 
-oracledb.init_oracle_client(lib_dir=None)
 
 load_dotenv()
 
@@ -25,15 +24,13 @@ if missing:
     print(f"❌ ERRO: Variáveis faltando: {', '.join(missing)}")
     sys.exit(1)
 
-DATABASE_URL = (
-    f"oracle+cx_oracle://{ORACLE_USER}:{ORACLE_PASSWORD}@{ORACLE_DSN}"
-)
+DATABASE_URL = f"oracle+cx_oracle://{ORACLE_USER}:{ORACLE_PASSWORD}@{ORACLE_DSN}"
 
 engine = create_engine(
     DATABASE_URL,
     echo=False,
     pool_pre_ping=True,
-    pool_recycle=1800
+    pool_recycle=1800,
 )
 
 SessionLocal = sessionmaker(
