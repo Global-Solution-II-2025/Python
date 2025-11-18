@@ -1,18 +1,18 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 from dotenv import load_dotenv
+import oracledb
 import os
 import sys
 
-# Carrega variáveis do .env
+oracledb.init_oracle_client(lib_dir=None)
+
 load_dotenv()
 
-# Variáveis obrigatórias
 ORACLE_USER = os.getenv("ORACLE_USER")
 ORACLE_PASSWORD = os.getenv("ORACLE_PASSWORD")
-ORACLE_DSN = os.getenv("ORACLE_DSN")  # Ex: oracle.fiap.com.br:1521/ORCL
+ORACLE_DSN = os.getenv("ORACLE_DSN")  # host:port/servicename
 
-# Verifica variáveis faltando
 missing = [
     k for k, v in {
         "ORACLE_USER": ORACLE_USER,
@@ -22,15 +22,13 @@ missing = [
 ]
 
 if missing:
-    print(f"❌ ERRO: Variáveis de ambiente faltando: {', '.join(missing)}")
+    print(f"❌ ERRO: Variáveis faltando: {', '.join(missing)}")
     sys.exit(1)
 
-# DSN usando driver oracledb (modo THIN)
 DATABASE_URL = (
-    f"oracle+oracledb://{ORACLE_USER}:{ORACLE_PASSWORD}@{ORACLE_DSN}?mode=thin"
+    f"oracle+cx_oracle://{ORACLE_USER}:{ORACLE_PASSWORD}@{ORACLE_DSN}"
 )
 
-# Cria engine
 engine = create_engine(
     DATABASE_URL,
     echo=False,
@@ -38,12 +36,10 @@ engine = create_engine(
     pool_recycle=1800
 )
 
-# Session maker
 SessionLocal = sessionmaker(
     autocommit=False,
     autoflush=False,
-    bind=engine,
+    bind=engine
 )
 
-# Base de modelos
 Base = declarative_base()
