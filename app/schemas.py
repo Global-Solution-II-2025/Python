@@ -18,10 +18,13 @@ class AreaOut(AreaBase):
 class QuestionOut(BaseModel):
     id: int
     text: str
-    area_id: Optional[int]
+    area_id: int | None = None
 
-    class Config:
-        orm_mode = True
+    model_config = {
+        "from_attributes": True
+    }
+
+
 
 def validate_score(v: int) -> int:
     if v < 1 or v > 5:
