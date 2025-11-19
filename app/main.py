@@ -12,15 +12,13 @@ FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
 app = FastAPI(title="NoraIA API")
 
-# models.Base.metadata.create_all(bind=engine)
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         FRONTEND_URL,
         "http://localhost:5173",
-        "https://*.onrender.com",
-        "*"
+        "https://noraia-sm77.onrender.com",  
+        "https://noraia.vercel.app",         
     ],
     allow_credentials=True,
     allow_methods=["*"],
