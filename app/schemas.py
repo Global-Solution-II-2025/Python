@@ -1,5 +1,5 @@
 from typing import List, Optional, Annotated
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field
 from pydantic.functional_validators import AfterValidator
 
 
@@ -8,12 +8,17 @@ class AreaBase(BaseModel):
     name: str
     description: Optional[str] = None
 
+    model_config = {
+        "extra": "forbid"
+    }
+
 
 class AreaOut(AreaBase):
     id: int
 
     model_config = {
-        "from_attributes": True
+        "from_attributes": True,
+        "extra": "forbid"
     }
 
 
@@ -23,8 +28,10 @@ class QuestionOut(BaseModel):
     area_id: int | None = None
 
     model_config = {
-        "from_attributes": True
+        "from_attributes": True,
+        "extra": "forbid"
     }
+
 
 def validate_score(v: int) -> int:
     if v < 1 or v > 5:
@@ -36,19 +43,20 @@ ScoreType = Annotated[int, AfterValidator(validate_score)]
 
 class ResponseItem(BaseModel):
     area_id: int
-    score: ScoreType = Field(...)
+    score: ScoreType
+
+    model_config = {
+        "extra": "forbid"
+    }
 
 
 class ResponsesPayload(BaseModel):
     user_id: str = Field(..., min_length=1)
-    responses: List[ResponseItem]
+    responses: List[ResponseItem] = Field(..., min_length=1)
 
-    @validator("responses")
-    def not_empty(cls, v):
-        if not v:
-            raise ValueError("responses cannot be empty")
-        return v
-
+    model_config = {
+        "extra": "forbid"
+    }
 
 class ResultsArea(BaseModel):
     area_id: int
@@ -57,7 +65,8 @@ class ResultsArea(BaseModel):
     avg_score: float
 
     model_config = {
-        "from_attributes": True
+        "from_attributes": True,
+        "extra": "forbid"
     }
 
 
@@ -67,5 +76,6 @@ class ResultsOut(BaseModel):
     best_areas: List[ResultsArea]
 
     model_config = {
-        "from_attributes": True
+        "from_attributes": True,
+        "extra": "forbid"
     }
