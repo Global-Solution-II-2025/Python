@@ -13,13 +13,9 @@ def list_areas(db: Session = Depends(get_db)):
     except:
         raise HTTPException(500, "Internal server error")
 
-@router.get("/questions")
-def list_questions_test(db: Session = Depends(get_db)):
-    data = crud.get_questions(db)
-    print("QUESTIONS RAW:", data)  
-    return {"ok": True, "count": len(data)}
-
-
+@router.get("/questions", response_model=List[schemas.QuestionOut])
+def list_questions(area_id: int = None, db: Session = Depends(get_db)):
+    return crud.get_questions(db, area_id)
 
 @router.post("/responses", status_code=status.HTTP_201_CREATED)
 def post_responses(payload: schemas.ResponsesPayload, db: Session = Depends(get_db)):
