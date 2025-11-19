@@ -1,21 +1,60 @@
-from pydantic import BaseModel
-from typing import Optional, Dict
-
-class StartSessionRequest(BaseModel):
-    external_user_id: str
+from typing import List, Optional, Annotated
+from pydantic import BaseModel, Field, validator
+from pydantic.functional_validators import AfterValidator
 
 
-class StartSessionResponse(BaseModel):
-    session_id: int
+class AreaBase(BaseModel):
+    name: str
+    description: Optional[str] = None
 
 
-class AnswerRequest(BaseModel):
-    session_id: int
-    question_code: str
-    score: int
+class AreaOut(AreaBase):
+    id: int
+
+    class Config:
+        orm_mode = True
 
 
-class ResultResponse(BaseModel):
-    session_id: int
-    scores: Dict[str, int]
-    top_categories: list
+class QuestionOut(BaseModel):
+    id: int
+    text: str
+    area_id: Optional[int]
+
+    class Config:
+        orm_mode = True
+
+def validate_score(v: int) -> int:
+    if v < 1 or v > 5:
+        raise ValueError("score must be between 1 and 5")
+    return v
+
+ScoreType = Annotated[int, AfterValidator(validate_score)]
+
+
+class ResponseItem(BaseModel):
+    area_id: int
+    score: ScoreType = Field(...)
+
+
+class ResponsesPayload(BaseModel):
+    user_id: str = Field(..., min_length=1)
+    responses: List[ResponseItem]
+
+    @validator("responses")
+    def not_empty(cls, v):
+        if not v:
+            raise ValueError("responses cannot be empty")
+        return v
+
+
+class ResultsArea(BaseModel):
+    area_id: int
+    area_name: str
+    total_score: int
+    avg_score: float
+
+
+class ResultsOut(BaseModel):
+    user_id: str
+    summary: List[ResultsArea]
+    best_areas: List[ResultsArea]

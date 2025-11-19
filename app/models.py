@@ -1,44 +1,35 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, TIMESTAMP
+from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime, func
 from sqlalchemy.orm import relationship
 from .database import Base
 
-class User(Base):
-    __tablename__ = "users"
+class Area(Base):
+    __tablename__ = "areas"
 
-    id = Column(Integer, primary_key=True, index=True)
-    external_user_id = Column(String, unique=True, index=True)
-    created_at = Column(TIMESTAMP)
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(255), nullable=False)
+    description = Column(Text)
 
-    sessions = relationship("Session", back_populates="user")
+    questions = relationship("Question", back_populates="area")
+    scores = relationship("UserScore", back_populates="area")
 
 
 class Question(Base):
     __tablename__ = "questions"
 
-    id = Column(Integer, primary_key=True)
-    code = Column(String, unique=True)
-    text = Column(String)
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    text = Column(Text, nullable=False)
+    area_id = Column(Integer, ForeignKey("areas.id"), nullable=True)
 
-    answers = relationship("Answer", back_populates="question")
+    area = relationship("Area", back_populates="questions")
 
 
-class Session(Base):
-    __tablename__ = "sessions"
+class UserScore(Base):
+    __tablename__ = "user_scores"
 
-    id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey("users.id"))
-    created_at = Column(TIMESTAMP)
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(String(255), nullable=False, index=True)
+    area_id = Column(Integer, ForeignKey("areas.id"), nullable=False)
+    score = Column(Integer, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    user = relationship("User", back_populates="sessions")
-    answers = relationship("Answer", back_populates="session")
-
-class Answer(Base):
-    __tablename__ = "answers"
-
-    id = Column(Integer, primary_key=True)
-    session_id = Column(Integer, ForeignKey("sessions.id"))
-    question_id = Column(Integer, ForeignKey("questions.id"))
-    score = Column(Integer)
-
-    session = relationship("Session", back_populates="answers")
-    question = relationship("Question", back_populates="answers")
+    area = relationship("Area", back_populates="scores")

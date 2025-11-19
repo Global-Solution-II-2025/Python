@@ -1,41 +1,29 @@
+import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.exc import SQLAlchemyError
 from dotenv import load_dotenv
-import oracledb
-import os
-import sys
 
 load_dotenv()
 
 ORACLE_USER = os.getenv("ORACLE_USER")
 ORACLE_PASSWORD = os.getenv("ORACLE_PASSWORD")
-ORACLE_DSN = os.getenv("ORACLE_DSN")  # host:port/servicename
+ORACLE_DSN = os.getenv("ORACLE_DSN")  # e.g. host:port/ORCL
 
-missing = [
-    k for k, v in {
-        "ORACLE_USER": ORACLE_USER,
-        "ORACLE_PASSWORD": ORACLE_PASSWORD,
-        "ORACLE_DSN": ORACLE_DSN,
-    }.items() if not v
-]
-
-if missing:
-    print(f"❌ ERRO: Variáveis faltando: {', '.join(missing)}")
-    sys.exit(1)
+if not ORACLE_USER or not ORACLE_PASSWORD or not ORACLE_DSN:
+    raise RuntimeError("Please set ORACLE_USER, ORACLE_PASSWORD and ORACLE_DSN")
 
 DATABASE_URL = f"oracle+oracledb://{ORACLE_USER}:{ORACLE_PASSWORD}@{ORACLE_DSN}"
 
-engine = create_engine(
-    DATABASE_URL,
-    echo=False,
-    pool_pre_ping=True,
-    pool_recycle=1800
-)
+engine = create_engine(DATABASE_URL, echo=False)
 
-SessionLocal = sessionmaker(
-    autocommit=False,
-    autoflush=False,
-    bind=engine
-)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()

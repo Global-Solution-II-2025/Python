@@ -1,50 +1,60 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from .database import SessionLocal
-from . import crud, schemas, models
+from typing import List
+from . import crud, schemas
+from .database import get_db
 
-router = APIRouter(prefix="/vocational", tags=["Vocational Test"])
+router = APIRouter()
 
-def get_db():
-    db = SessionLocal()
+@router.get("/areas", response_model=List[schemas.AreaOut])
+def list_areas(db: Session = Depends(get_db)):
     try:
-        yield db
-    finally:
-        db.close()
+        return crud.get_areas(db)
+    except:
+        raise HTTPException(500, "Internal server error")
 
+@router.get("/questions", response_model=List[schemas.QuestionOut])
+def list_questions(area_id: int = None, db: Session = Depends(get_db)):
+    try:
+        return crud.get_questions(db, area_id)
+    except:
+        raise HTTPException(500, "Internal server error")
 
-@router.post("/start", response_model=schemas.StartSessionResponse)
-def start_test(request: schemas.StartSessionRequest, db: Session = Depends(get_db)):
-    user = crud.get_or_create_user(db, request.external_user_id)
-    session = crud.create_session(db, user.id)
-    return schemas.StartSessionResponse(session_id=session.id)
+@router.post("/responses", status_code=status.HTTP_201_CREATED)
+def post_responses(payload: schemas.ResponsesPayload, db: Session = Depends(get_db)):
+    try:
+        for r in payload.responses:
+            if not crud.area_exists(db, r.area_id):
+                raise HTTPException(404, f"area_id {r.area_id} not found")
 
+        inserted = crud.save_user_scores(db, payload.user_id, payload.responses)
+        return {"message": "saved", "inserted": len(inserted)}
 
-@router.post("/answer")
-def answer_question(request: schemas.AnswerRequest, db: Session = Depends(get_db)):
-    question = crud.get_question_by_code(db, request.question_code)
-    if not question:
-        raise HTTPException(404, "Question not found")
+    except HTTPException:
+        raise
+    except:
+        raise HTTPException(500, "Internal server error")
 
-    crud.save_answer(db, request.session_id, question, request.score)
-    return {"status": "ok"}
+@router.get("/results/{user_id}", response_model=schemas.ResultsOut)
+def get_results(user_id: str, db: Session = Depends(get_db)):
+    try:
+        summary, best = crud.calculate_results(db, user_id)
+        return {"user_id": user_id, "summary": summary, "best_areas": best}
+    except:
+        raise HTTPException(500, "Internal server error")
 
-
-@router.get("/result/{session_id}", response_model=schemas.ResultResponse)
-def get_result(session_id: int, db: Session = Depends(get_db)):
-    answers = crud.get_answers_by_session(db, session_id)
-
-    if not answers:
-        raise HTTPException(404, "No answers found for this session")
-
-    scores = {}
-    for answer in answers:
-        scores[answer.question.code] = scores.get(answer.question.code, 0) + answer.score
-
-    top = sorted(scores.items(), key=lambda x: x[1], reverse=True)[:3]
-    
-    return schemas.ResultResponse(
-        session_id=session_id,
-        scores=scores,
-        top_categories=[t[0] for t in top]
-    )
+@router.get("/users/{user_id}/history")
+def history(user_id: str, db: Session = Depends(get_db)):
+    try:
+        rows = crud.get_user_scores(db, user_id)
+        return [
+            {
+                "id": r.id,
+                "area_id": r.area_id,
+                "score": r.score,
+                "created_at": r.created_at.isoformat(),
+            }
+            for r in rows
+        ]
+    except:
+        raise HTTPException(500, "Internal server error")
