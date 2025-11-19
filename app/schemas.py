@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field, validator
 from pydantic.functional_validators import AfterValidator
 
 
+
 class AreaBase(BaseModel):
     name: str
     description: Optional[str] = None
@@ -11,8 +12,9 @@ class AreaBase(BaseModel):
 class AreaOut(AreaBase):
     id: int
 
-    class Config:
-        orm_mode = True
+    model_config = {
+        "from_attributes": True
+    }
 
 
 class QuestionOut(BaseModel):
@@ -23,8 +25,6 @@ class QuestionOut(BaseModel):
     model_config = {
         "from_attributes": True
     }
-
-
 
 def validate_score(v: int) -> int:
     if v < 1 or v > 5:
@@ -56,8 +56,16 @@ class ResultsArea(BaseModel):
     total_score: int
     avg_score: float
 
+    model_config = {
+        "from_attributes": True
+    }
+
 
 class ResultsOut(BaseModel):
     user_id: str
     summary: List[ResultsArea]
     best_areas: List[ResultsArea]
+
+    model_config = {
+        "from_attributes": True
+    }
