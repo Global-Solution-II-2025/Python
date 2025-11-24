@@ -18,7 +18,7 @@ app.add_middleware(
         FRONTEND_URL,
         "http://localhost:5173",
         "https://noraia-sm77.onrender.com",  
-        "https://noraia.vercel.app",         
+        "https://front-end-orpin-zeta-76.vercel.app/",         
     ],
     allow_credentials=True,
     allow_methods=["*"],
